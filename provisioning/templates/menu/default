@@ -1,0 +1,14 @@
+default menu.c32
+timeout 100
+
+
+menu title #######################PXE Boot Menu##################
+label 1
+  menu label^1)Install RHEL 7.4
+  kernel /netboot/vmlinuz
+  append initrd=/netboot/initrd.img inst.repo=http://{{next_server}}/repo inst.ks=http://{{next_server}}/files/ks.cfg
+
+label 2
+  menu label^2)Boot from local drive
+  localboot
+

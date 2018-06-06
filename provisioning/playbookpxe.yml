@@ -1,0 +1,47 @@
+---
+- hosts: all
+  become: true
+  vars_files: 
+    - pxe_vars.yml
+  tasks:
+    - name: check syslinux xinetd tftp=server dhcp httpd system-config-kickstart
+      package: name={{item}} state=present
+      with_items:
+        - syslinux
+        - xinetd
+        - tftp-server
+        - dhcp
+        - httpd
+        - system-config-kickstart
+    - name: Create PXELinux Folder 
+      file: dest=/var/lib/tftpboot/pxelinux.cfg1 state=directory
+    - name: Copy pxelinux
+      command: cp  src=/usr/share/syslinux/pxelinux.0 dest=/var/lib/tftpboot/ creates=/var/lib/tftpboot/pxelinux.0
+    - name: Check TFTP Server configuration
+      command: grep disable /etc/xinetd.d/tftp 
+      register: tftp_state
+      ignore_errors: true
+      changed_when: false
+    - replace: dest=/etc/xinetd.d/tftp regexp='(\s+disable\s+=\s+)yes(\s+.*)?$' replace='\1no\2'
+      when: '"yes" in tftp_state.stdout'
+      notify: restart xinetd
+    - name: Copy DHCP Configuration 
+      template: src=templates/dhcp/dhcpd.conf dest=/etc/dhcp/dhcpd.conf mode=0644
+      notify: restart dhcp
+    - block: 
+        - file: dest=/ISO state=directory
+        - file: dest=/var/lib/tftpboot/netboot state=directory
+        - mount: name=/ISO src=/dev/sr0 fstype=iso9660 opts=ro,noauto state=mounted
+        - copy:  src=/ISO/images/pxeboot/vmlinuz dest=/var/lib/tftpboot/netboot/ remote_src=yes
+        - copy:  src=/ISO/images/pxeboot/initrd.img dest=/var/lib/tftpboot/netboot/ remote_src=yes
+        - copy:  src=/usr/share/syslinux/menu.c32 dest=/var/lib/tftpboot/ remote_src=yes
+        - template: src=templates/menu/default dest=/var/lib/tftpboot/pxelinux.cfg/
+        - file: dest=/var/lib/tftpboot/ state=directory recurse=yes mode=0755
+        - template:  src=templates/http/httpd.conf dest=/etc/httpd/conf/
+        - file: dest=/var/www/html/files state=directory
+        - template:  src=templates/menu/ks.cfg dest=/var/www/html/files/
+  handlers:
+    - name: restart xinetd
+      service: name=xinetd enabled=yes state=restarted
+    - name: restart dhcp
+      service: name=dhcpd enabled=yes state=restarted
