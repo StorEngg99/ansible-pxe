@@ -4,4 +4,4 @@ router: 192.168.0.62
 range_start: 192.168.0.220 
 range_end: 192.168.0.225
 next_server: 192.168.0.62
-hostname: centos_boo
+hostname: centos_1
