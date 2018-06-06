@@ -37,11 +37,15 @@
         - copy:  src=/usr/share/syslinux/menu.c32 dest=/var/lib/tftpboot/ remote_src=yes
         - template: src=templates/menu/default dest=/var/lib/tftpboot/pxelinux.cfg/
         - file: dest=/var/lib/tftpboot/ state=directory recurse=yes mode=0755
-        - template:  src=templates/http/httpd.conf dest=/etc/httpd/conf/
         - file: dest=/var/www/html/files state=directory
         - template:  src=templates/menu/ks.cfg dest=/var/www/html/files/
+    - name: Copy HTTP Configuration 
+      template:  src=templates/http/httpd.conf dest=/etc/httpd/conf/
+      notify: restart http
   handlers:
     - name: restart xinetd
       service: name=xinetd enabled=yes state=restarted
     - name: restart dhcp
       service: name=dhcpd enabled=yes state=restarted
+    - name: restart http
+      service: name=httpd enabled=yes state=restarted
